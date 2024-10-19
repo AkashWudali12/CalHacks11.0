@@ -2,8 +2,9 @@ import mapboxgl from 'mapbox-gl';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { createRoot } from 'react-dom/client';
-import emergencyData from '../static/berkeleyEmergencyResponse.json';
 import './Map.css';
+import { BottomOverlay } from './BottomOverlay';
+import { TopOverlay } from './TopOverlay'; // Add this import
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmxhaXJvcmNoYXJkIiwiYSI6ImNsNWZzeGtrNDEybnMzaXA4eHRuOGU5NDUifQ.s59N5x1EqfyPZxeImzNwbw';
 
@@ -19,7 +20,7 @@ const Marker = ({ onClick, children, call }) => {
   );
 };
 
-const Map = () => {
+const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef({});
@@ -31,11 +32,11 @@ const Map = () => {
   useEffect(() => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-122.272747, 37.871853],
-      zoom: 12,
-      pitch: 60,
-      bearing: -60,
+      style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
+      // center: [-122.272747, 37.871853],
+      // zoom: 12,
+      // pitch: 60,
+      // bearing: -60,
       antialias: true,
       attributionControl: false
     });
@@ -43,10 +44,10 @@ const Map = () => {
     mapRef.current = map;
 
     map.on('style.load', () => {
-      map.addSource('emergency-locations', {
-        type: 'geojson',
-        data: emergencyData
-      });
+      // map.addSource('emergency-locations', {
+      //   type: 'geojson',
+      //   data: emergencyData
+      // });
 
       // Add a layer for fire stations
       map.addLayer({
@@ -177,22 +178,22 @@ const Map = () => {
     const newMarkers = [];
 
     const getNearestStation = (type, callLocation) => {
-      const stations = emergencyData.features.filter(feature => feature.properties.type === type);
-      let nearestStation = null;
-      let minDistance = Infinity;
+      // const stations = emergencyData.features.filter(feature => feature.properties.type === type);
+      // let nearestStation = null;
+      // let minDistance = Infinity;
 
-      stations.forEach(station => {
-        const [stationLng, stationLat] = station.geometry.coordinates;
-        const distance = Math.sqrt(
-          Math.pow(callLocation[0] - stationLng, 2) + Math.pow(callLocation[1] - stationLat, 2)
-        );
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestStation = station.geometry.coordinates;
-        }
-      });
+      // stations.forEach(station => {
+      //   const [stationLng, stationLat] = station.geometry.coordinates;
+      //   const distance = Math.sqrt(
+      //     Math.pow(callLocation[0] - stationLng, 2) + Math.pow(callLocation[1] - stationLat, 2)
+      //   );
+      //   if (distance < minDistance) {
+      //     minDistance = distance;
+      //     nearestStation = station.geometry.coordinates;
+      //   }
+      // });
 
-      return nearestStation;
+      // return nearestStation;
     };
 
     const getRoute = async (start, end, layerId, lineColor) => {
@@ -338,7 +339,23 @@ const Map = () => {
     console.log('Marker clicked:', call);
   };
 
-  return <div ref={mapContainerRef} className="map-container" />;
+  return (
+    <div className="map-container">
+      <div ref={mapContainerRef} className="mapbox-container" />
+      <div className="overlay-wrapper">
+        <div className="overlay-container">
+          <TopOverlay />
+        </div>
+        <div className="overlay-container bottom-overlay">
+          <BottomOverlay
+            handleMouseEnter={handleMouseEnter}
+            handleMouseLeave={handleMouseLeave}
+            handleCallClick={handleCallClick}
+          />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Map;

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Sidebar } from '../components/Sidebar';
 import Map from '../components/Map';
 import { setupCallsListener } from '../backend/subscriptions';
 import styled from "styled-components";
+import { TopOverlay } from '../components/TopOverlay';
 
 const HoverModal = styled.div`
   position: fixed;
@@ -66,13 +66,13 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="flex">
-      <Sidebar
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <Map
         handleMouseEnter={handleMouseEnter}
         handleMouseLeave={handleMouseLeave}
         handleCallClick={handleCallClick}
       />
-      <Map />
+      {/* TopOverlay is now handled within the Map component */}
       {(hoverInfo || selectedCall) && (
         <HoverModal onClick={selectedCall ? handleModalClose : undefined} style={{ cursor: selectedCall ? 'pointer' : 'default' }}>
           <div>

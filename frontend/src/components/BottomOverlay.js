@@ -1,14 +1,13 @@
 import styled from "styled-components";
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { ago } from '../backend/util';
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
+import { ago } from "../backend/util";
 import * as allIcons from "tabler-icons-react";
-
 
 const StyledVerticalBorder = styled.div`
   align-items: flex-start;
   background-color: #000000;
-  border-color: #1C1C1E;
+  border-color: #1c1c1e;
   border-right-style: solid;
   border-right-width: 1px;
   display: flex;
@@ -53,7 +52,7 @@ const StyledVerticalBorder = styled.div`
   }
 
   & .text-wrapper {
-    color: #FFFFFF;
+    color: #ffffff;
     font-family: "SF Pro Text-Semibold", Helvetica;
     font-size: 18px;
     font-weight: 600;
@@ -75,7 +74,7 @@ const StyledVerticalBorder = styled.div`
   }
 
   & .p {
-    color: #A1A1AA;
+    color: #a1a1aa;
     font-family: "SF Pro Text-Regular", Helvetica;
     font-size: 14px;
     font-weight: 400;
@@ -135,11 +134,11 @@ const StyledVerticalBorder = styled.div`
     width: 100%;
     transition: background-color 0.3s ease; // Add smooth hover animation
     cursor: pointer;
-}
+  }
 
-& .linkbruh:hover {
+  & .linkbruh:hover {
     background-color: #ffffff1a; // Make the background slightly brighter on hover
-}
+  }
 
   & .frame-2 {
     align-items: center;
@@ -229,15 +228,15 @@ const StyledVerticalBorder = styled.div`
 
   @keyframes blinkBackground {
     0% {
-        background-color: #22c55e;
+      background-color: #22c55e;
     }
     50% {
-        background-color: transparent;
+      background-color: transparent;
     }
     100% {
-        background-color: #22c55e;
+      background-color: #22c55e;
     }
-}
+  }
 
   & .margin {
     align-items: flex-start;
@@ -262,7 +261,7 @@ const StyledVerticalBorder = styled.div`
   }
 
   & .text-wrapper-5 {
-    color: #A1A1A1;
+    color: #a1a1a1;
     font-family: "SF Pro Text-Regular", Helvetica;
     font-size: 11px;
     font-weight: 600;
@@ -273,7 +272,6 @@ const StyledVerticalBorder = styled.div`
     white-space: nowrap;
   }
 `;
-
 
 const HoverModal = styled.div`
   position: fixed;
@@ -292,92 +290,77 @@ const HoverModal = styled.div`
   word-wrap: break-word;
 `;
 
-export const Sidebar = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
-    const calls = useSelector(state => state.calls);
-    const [expandedCall, setExpandedCall] = useState(null);
-  
-    const toggleExpand = (callId) => {
-      setExpandedCall(expandedCall === callId ? null : callId);
-    };
-  
-    const sortedCalls = [...calls].sort((a, b) => b.createdDate - a.createdDate);
-  
-    return (
-      <StyledVerticalBorder>
-        <div className="container">
-          <div className="frame-wrapper">
-            <div className="div">
-              <div className="div">
-                <p className="text-wrapper">Call +1 (571) 651 8232</p>
-              </div>
-              <div className="heading">
-                <p className="p">To experience the future of 911 calls.</p>
-              </div>
-            </div>
-          </div>
-          <div className="frame">
-            <div className="text-wrapper-2">Recent Emergency Calls</div>
-          </div>
-          <div className="nav">
-          {sortedCalls.map((call) => {
-            const IconToBeUsed = allIcons[call.icon] || allIcons['Activity'];
+export const BottomOverlay = ({
+  handleMouseEnter,
+  handleMouseLeave,
+  handleCallClick,
+}) => {
+  const calls = useSelector((state) => state.calls);
+  const [expandedCall, setExpandedCall] = useState(null);
 
-            return (
-              <div 
-                className="linkbruh" 
-                key={call.id} 
-                onClick={() => {
-                  toggleExpand(call.id);
-                  handleCallClick(call);
-                }}
-                onMouseEnter={(e) => handleMouseEnter(e, call)}
-                onMouseLeave={handleMouseLeave}
-              >
-                  <div className="frame-2">
-                    <div className="frame-3">
-                      <IconToBeUsed size={26} color="#ffffff" fill="#000000"  />
-                      <div className="div">
-                        <div className="text-wrapper-3">
-                          {call.shortSummary ? call.shortSummary : ""}
-                        </div>
-                      </div>
-                    </div>
-                    {call.callStatus === "active" && (
-                      <div className="group">
-                        <div className="container-wrapper">
-                          <div className="overlay-wrapper">
-                            <div className="overlay">
-                              <div className="background-wrapper">
-                                <div className="background" />
-                              </div>
-                              <div className="margin">
-                                <div className="text-wrapper-4">Live</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ gap: "-2px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div className="text-wrapper-5">
-        {"Built by "}
-        <a href="https://twitter.com/cjarrayadev" style={{ textDecoration: "underline" }}>Christopher Arraya</a>
-        {"  "}
-        <a href="https://x.com/tahaha_a" style={{ textDecoration: "underline" }}>Taha Ansari</a>
-        {""}
-      </div>
-      <div className="text-wrapper-5">
-        <a href="https://x.com/JackBlair87" style={{ textDecoration: "underline" }}>Jack Blair</a>
-        {"  "}
-        <a href="https://twitter.com/rzhang139" style={{ textDecoration: "underline" }}>Richard Zhang</a>
-      </div>
-    </div>
-        </div>
-      </StyledVerticalBorder>
-    );
+  const toggleExpand = (callId) => {
+    setExpandedCall(expandedCall === callId ? null : callId);
   };
+
+  const sortedCalls = [...calls].sort((a, b) => b.createdDate - a.createdDate);
+
+  return (
+    <StyledBottomOverlay>
+      <div className="container">
+        <div
+          style={{
+            gap: "-2px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <div className="text-wrapper-5">
+            {"Built by "}
+            <a
+              href="https://twitter.com/cjarrayadev"
+              style={{ textDecoration: "underline" }}
+            >
+              Christopher Arraya
+            </a>
+            {"  "}
+            <a
+              href="https://x.com/tahaha_a"
+              style={{ textDecoration: "underline" }}
+            >
+              Taha Ansari
+            </a>
+            {""}
+          </div>
+          <div className="text-wrapper-5">
+            <a
+              href="https://x.com/JackBlair87"
+              style={{ textDecoration: "underline" }}
+            >
+              Jack Blair
+            </a>
+            {"  "}
+            <a
+              href="https://twitter.com/rzhang139"
+              style={{ textDecoration: "underline" }}
+            >
+              Richard Zhang
+            </a>
+          </div>
+        </div>
+      </div>
+    </StyledBottomOverlay>
+  );
+};
+
+const StyledBottomOverlay = styled.div`
+  background-color: rgba(0, 0, 0, 0.95);
+  border-radius: 20px;
+  padding: 20px;
+  margin-left: 10px;
+  margin-right: 10px;
+  margin-bottom: 40px;
+  color: #ffffff;
+  max-height: 70vh;
+  overflow-y: auto;
+`;
