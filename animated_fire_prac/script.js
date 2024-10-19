@@ -24,7 +24,7 @@ async function corOnLand(lon, lat) {
 }
 
 function caliFireCor(t) {
-    const centerCor = [37.1, -122.1]; // [latitude, longitude]
+    const centerCor = [37.1, -122.1]; 
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
     const R0 = 0.045; // Initial radius in degrees (≈5 km)
@@ -174,20 +174,6 @@ var geolocate = new mapboxgl.GeolocateControl({
   
 map.addControl(geolocate);
 
-function calculateDistanceFromCenter(center, point) {
-    const lat1 = center[1];
-    const lon1 = center[0];
-    const lat2 = point[1];
-    const lon2 = point[0];
-    
-    // Approximate Euclidean distance in degrees (for small distances)
-    const dLat = lat2 - lat1;
-    const dLon = lon2 - lon1;
-    
-    // This is a simplified distance formula (good enough for small distances)
-    return Math.sqrt(dLat * dLat + dLon * dLon);
-}
-
 function getCurrentPosition() {
     console.log("Called");
     return new Promise((resolve, reject) => {
@@ -206,24 +192,40 @@ function getCurrentPosition() {
     });
 }
 
-async function getOptimalDestination() {
+async function getOptimalDestination(currentPosition) {
 
     // optimization logic, simulate next few timesteps of fire to see where to go.
-    const address = "1600 Amphitheatre Parkway, Mountain View, CA";
-    const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}`;
+    const addressLst = ["San Rafael, California", 
+        "Novato, California",
+        "Santa Rosa, California",
+        "Napa, California"
+    ]
+  
 
-    try {
-        const response = await fetch(geocodingUrl);
-        const data = await response.json();
-        const [destLon, destLat] = data.features[0].center;
-        console.log("Got destination coordinates:", destLat, destLon);
-        return [destLon, destLat];
+    var toRet = []
+    var minDist = -1;
+
+    for (let i = 0; i < addressLst.length; i++) {
+        const address = addressLst[i];
+        const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}`;
+
+        try {
+            const response = await fetch(geocodingUrl);
+            const data = await response.json();
+            const [destLon, destLat] = data.features[0].center;
+            const dist = getDistance(currentPosition, [destLon, destLat])
+            if (dist < minDist || (minDist == -1)) {
+                toRet = [destLon, destLat];
+                minDist = dist;
+            }
+        }
+    
+        catch (error) {
+            console.log("Could not get optimal destination:", error);
+        }
     }
 
-    catch (error) {
-        console.log("Could not get optimal destination:", error);
-        return [0, 0]; // how to handle this edge case
-    }
+    return toRet
 }
 
 async function showDirections(startCors, destinationCors) {
@@ -244,6 +246,31 @@ async function showDirections(startCors, destinationCors) {
     }
 }
 
+function getDistance(p1, p2) {
+    const [lon1, lat1] = p1;
+    const [lon2, lat2] = p2;
+    
+    const R = 6371; // Radius of the Earth in kilometers
+
+    // Convert degrees to radians
+    const toRadians = (degrees) => degrees * (Math.PI / 180);
+
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distance = R * c; // Distance in kilometers
+
+    return distance;
+}
+
+
 map.on('load', async () => {
 
     console.log("On");
@@ -255,7 +282,7 @@ map.on('load', async () => {
     });
 
     const currentPosition = await getCurrentPosition();
-    const optimalDestination = await getOptimalDestination();
+    const optimalDestination = await getOptimalDestination(currentPosition);
     const route = await showDirections(currentPosition, optimalDestination);
 
     console.log("Current Position:", currentPosition);
@@ -343,7 +370,7 @@ map.on('load', async () => {
 
     async function startAnimation() {
         const N0 = 50;
-        const k = 0.05;
+        const k = 0.02;
         const startTime = new Date(); 
         console.log(startTime)
         async function animate() {
