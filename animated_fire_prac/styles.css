@@ -1,0 +1,40 @@
+body { 
+    margin: 0; 
+    padding: 0; 
+    font-family: Arial, sans-serif; 
+}
+
+#header { 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    height: 60px; 
+    background-color: #333; 
+    color: white; 
+    display: flex; 
+    align-items: center; 
+    padding-left: 20px;
+}
+
+#content {
+    position: absolute;
+    top: 60px;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+}
+
+#map-container {
+    width: 80%;
+    height: 80%;
+    border: 2px solid #333;
+}
+
+#map { 
+    width: 100%; 
+    height: 100%; 
+}
