@@ -28,6 +28,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const calls = useSelector(state => state.calls);
   const [geocoder, setGeocoder] = useState(null);
   const [markers, setMarkers] = useState([]);
+  const [isTopOverlayVisible, setIsTopOverlayVisible] = useState(false);
 
   useEffect(() => {
     const map = new mapboxgl.Map({
@@ -339,18 +340,27 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     console.log('Marker clicked:', call);
   };
 
+  const handleToggleTopOverlay = () => {
+    setIsTopOverlayVisible(!isTopOverlayVisible);
+  };
+
   return (
     <div className="map-container">
       <div ref={mapContainerRef} className="mapbox-container" />
       <div className="overlay-wrapper">
         <div className="overlay-container">
-          <TopOverlay />
+          <TopOverlay 
+            isDropped={isTopOverlayVisible} 
+            onHide={() => setIsTopOverlayVisible(false)}
+          />
         </div>
         <div className="overlay-container bottom-overlay">
           <BottomOverlay
             handleMouseEnter={handleMouseEnter}
             handleMouseLeave={handleMouseLeave}
             handleCallClick={handleCallClick}
+            onToggleTopOverlay={handleToggleTopOverlay}
+            isTopOverlayVisible={isTopOverlayVisible}
           />
         </div>
       </div>

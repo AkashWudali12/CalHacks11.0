@@ -290,10 +290,39 @@ const HoverModal = styled.div`
   word-wrap: break-word;
 `;
 
+const DropdownButton = styled.button`
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+`;
+
+const ToggleButton = styled.button`
+  background-color: ${props => props.isTopOverlayVisible ? '#f44336' : '#4CAF50'};
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+`;
+
 export const BottomOverlay = ({
   handleMouseEnter,
   handleMouseLeave,
   handleCallClick,
+  onDropdownClick,
+  onToggleTopOverlay,
+  isTopOverlayVisible,
 }) => {
   const calls = useSelector((state) => state.calls);
   const [expandedCall, setExpandedCall] = useState(null);
@@ -349,6 +378,9 @@ export const BottomOverlay = ({
           </div>
         </div>
       </div>
+      <ToggleButton onClick={onToggleTopOverlay} isTopOverlayVisible={isTopOverlayVisible}>
+        {isTopOverlayVisible ? 'Hide Top Overlay' : 'Show Top Overlay'}
+      </ToggleButton>
     </StyledBottomOverlay>
   );
 };

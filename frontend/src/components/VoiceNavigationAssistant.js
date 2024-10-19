@@ -30,10 +30,10 @@ const NavigationAssistant = () => {
   }, []);
 
   const startCall = () => {
-    if (vapi) {
+    if (vapi && !callActive) {
       vapi.start({
-        name: "Navigation Assistant",
-        firstMessage: `Hello! Your destination is Berkeley, CA at coordinates 40.7128° N, 74.0060° W. How can I assist you with directions?`,
+        name: "Fire Evacuation Assistant",
+        firstMessage: `Emergency! This is the Fire Evacuation Assistant. I'm here to guide you to safety. What's your current location in the building?`,
         transcriber: {
           provider: "deepgram",
           model: "nova-2",
@@ -49,9 +49,7 @@ const NavigationAssistant = () => {
           messages: [
             {
               role: "system",
-              content: `You are a navigation assistant. The user's destination is Berkeley, CA at coordinates 40.7128° N, 74.0060° W. 
-                        Provide directions and answer questions about the route. If asked about traffic or current conditions, 
-                        explain that you don't have real-time data and can only provide general directions.`
+              content: `You are a Fire Evacuation Assistant. Guide the user to safety, asking for their location and providing clear, calm instructions for evacuation. Prioritize user safety and quick evacuation.`
             }
           ],
         },
@@ -60,21 +58,12 @@ const NavigationAssistant = () => {
   };
 
   const endCall = () => {
-    if (vapi) {
+    if (vapi && callActive) {
       vapi.stop();
     }
   };
 
-  return (
-    <div>
-      <button onClick={startCall} disabled={callActive}>
-        Start Navigation Call
-      </button>
-      <button onClick={endCall} disabled={!callActive}>
-        End Call
-      </button>
-    </div>
-  );
+  return null; // We don't need to render anything here anymore
 };
 
 export default NavigationAssistant;
