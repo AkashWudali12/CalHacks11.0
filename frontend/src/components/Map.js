@@ -344,6 +344,10 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     setIsTopOverlayVisible(!isTopOverlayVisible);
   };
 
+  const handleHideTopOverlay = () => {
+    setIsTopOverlayVisible(false);
+  };
+
   return (
     <div className="map-container">
       <div ref={mapContainerRef} className="mapbox-container" />
@@ -351,7 +355,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
         <div className="overlay-container">
           <TopOverlay 
             isDropped={isTopOverlayVisible} 
-            onHide={() => setIsTopOverlayVisible(false)}
+            onHide={handleHideTopOverlay}
           />
         </div>
         <div className="overlay-container bottom-overlay">

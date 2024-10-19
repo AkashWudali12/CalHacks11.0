@@ -14,9 +14,20 @@ const dropDownAnimation = keyframes`
   }
 `;
 
+const slideUpAnimation = keyframes`
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+`;
+
 const StyledTopOverlay = styled.div`
   background-color: rgba(0, 0, 0, 0.95);
-  border-radius: 25px;
+  border-radius: 30px;
   padding: 20px;
   margin-left: 10px;
   margin-right: 10px;
@@ -35,6 +46,10 @@ const StyledTopOverlay = styled.div`
     opacity: 0;
     transform: translateY(-100%);
     pointer-events: none;
+  `}
+  
+  ${props => props.isSlideUp && css`
+    animation: ${slideUpAnimation} 0.3s ease-out forwards;
   `}
 `;
 
@@ -89,9 +104,10 @@ const RedButton = styled(CircularButton)`
   background-color: #f44336;
 `;
 
-export const TopOverlay = ({ isDropped }) => {
+export const TopOverlay = ({ isDropped, onHide }) => {
   const [vapi, setVapi] = useState(null);
   const [callActive, setCallActive] = useState(false);
+  const [isSlideUp, setIsSlideUp] = useState(false);
 
   useEffect(() => {
     const vapiInstance = new Vapi('47b3eb9c-9e6e-4fa7-9a55-a9c2d3caf50a');
@@ -149,10 +165,15 @@ export const TopOverlay = ({ isDropped }) => {
     if (vapi && callActive) {
       vapi.stop();
     }
+    setIsSlideUp(true);
+    setTimeout(() => {
+      onHide();
+      setIsSlideUp(false);
+    }, 300); // Match this with the animation duration
   };
 
   return (
-    <StyledTopOverlay isDropped={isDropped}>
+    <StyledTopOverlay isDropped={isDropped} isSlideUp={isSlideUp}>
       <OverlayContent>
         <Title>🚨 Fire Evacuation</Title>
         <ButtonContainer>

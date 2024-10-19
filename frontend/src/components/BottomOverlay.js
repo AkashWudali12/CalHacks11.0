@@ -320,7 +320,6 @@ export const BottomOverlay = ({
   handleMouseEnter,
   handleMouseLeave,
   handleCallClick,
-  onDropdownClick,
   onToggleTopOverlay,
   isTopOverlayVisible,
 }) => {
