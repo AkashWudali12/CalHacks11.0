@@ -94,6 +94,7 @@ const CircularButton = styled.button`
   cursor: pointer;
   color: white;
   font-size: 1.2rem;
+  overflow: hidden;
 `;
 
 const GreenButton = styled(CircularButton)`
@@ -102,6 +103,28 @@ const GreenButton = styled(CircularButton)`
 
 const RedButton = styled(CircularButton)`
   background-color: #f44336;
+`;
+
+const waveformAnimation = keyframes`
+  0% { height: 10px; }
+  50% { height: 30px; }
+  100% { height: 10px; }
+`;
+
+const WaveformContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+`;
+
+const WaveformBar = styled.div`
+  width: 3px;
+  background-color: white;
+  margin: 0 2px;
+  animation: ${waveformAnimation} 0.5s ease-in-out infinite;
+  animation-delay: ${props => props.delay}s;
 `;
 
 export const TopOverlay = ({ isDropped, onHide }) => {
@@ -172,13 +195,26 @@ export const TopOverlay = ({ isDropped, onHide }) => {
     }, 300); // Match this with the animation duration
   };
 
+  const renderButtonContent = () => {
+    if (callActive) {
+      return (
+        <WaveformContainer>
+          {[0, 1, 2, 3].map((i) => (
+            <WaveformBar key={i} delay={i * 0.1} />
+          ))}
+        </WaveformContainer>
+      );
+    }
+    return <FaPhone />;
+  };
+
   return (
     <StyledTopOverlay isDropped={isDropped} isSlideUp={isSlideUp}>
       <OverlayContent>
         <Title>🚨 Fire Evacuation</Title>
         <ButtonContainer>
           <GreenButton onClick={startCall} disabled={callActive}>
-            <FaPhone />
+            {renderButtonContent()}
           </GreenButton>
           <RedButton onClick={endCall} disabled={!callActive}>
             <FaPhoneSlash />
