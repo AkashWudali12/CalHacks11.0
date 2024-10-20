@@ -4,7 +4,9 @@ import { useSelector } from 'react-redux';
 import { createRoot } from 'react-dom/client';
 import './Map.css';
 import { BottomOverlay } from './BottomOverlay';
-import { TopOverlay } from './TopOverlay';
+import { TopOverlay } from './TopOverlay'; // Add this import
+import * as turf from '@turf/turf';
+import pingSound from '../assets/alarm.mp3'; // Add this import
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmxhaXJvcmNoYXJkIiwiYSI6ImNsNWZzeGtrNDEybnMzaXA4eHRuOGU5NDUifQ.s59N5x1EqfyPZxeImzNwbw';
 
@@ -29,201 +31,17 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [geocoder, setGeocoder] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [isTopOverlayVisible, setIsTopOverlayVisible] = useState(false);
+  const [isCallAccepted, setIsCallAccepted] = useState(false);
+  const [isCallDeclined, setIsCallDeclined] = useState(false);
+  const audioRef = useRef(new Audio(pingSound));
+  const [userLocation, setUserLocation] = useState(null);
 
-  useEffect(() => {
-    const initializeMap = async () => {
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
-        antialias: true,
-        attributionControl: false,
-      });
+  // Add these new functions
+  function N(t, N0, k) {
+    return N0 * (Math.exp(k * t));
+  }
 
-      mapRef.current = map;
-
-      map.on('style.load', async () => {
-        // Set terrain and add sky layer
-        map.setTerrain({ source: 'mapbox-dem', exaggeration: 2 });
-
-        map.addLayer({
-          id: 'sky',
-          type: 'sky',
-          paint: {
-            'sky-type': 'atmosphere',
-            'sky-atmosphere-sun': [0.0, 90.0],
-            'sky-atmosphere-sun-intensity': 15,
-          },
-        });
-
-        // Add 3D buildings
-        const layers = map.getStyle().layers;
-        const labelLayerId = layers.find(
-          (layer) => layer.type === 'symbol' && layer.layout['text-field']
-        ).id;
-
-        map.addLayer(
-          {
-            id: '3d-buildings',
-            source: 'composite',
-            'source-layer': 'building',
-            filter: ['==', 'extrude', 'true'],
-            type: 'fill-extrusion',
-            paint: {
-              'fill-extrusion-color': '#313131',
-              'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0,
-                0,
-                8,
-                ['*', ['get', 'height'], 0.1],
-                12,
-                ['*', ['get', 'height'], 0.5],
-                16,
-                ['get', 'height'],
-              ],
-              'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0,
-                0,
-                8,
-                ['*', ['get', 'min_height'], 0.1],
-                12,
-                ['*', ['get', 'min_height'], 0.5],
-                16,
-                ['get', 'min_height'],
-              ],
-              'fill-extrusion-opacity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0,
-                0,
-                8,
-                0.3,
-                12,
-                0.7,
-                16,
-                0.9,
-              ],
-            },
-          },
-          labelLayerId
-        );
-
-        map.flyTo({
-          center: [-122.5, 37.7],
-          zoom: 7,
-          speed: 0.5,
-          curve: 1,
-        });
-
-        // Add heatmap source and layer
-        map.addSource('fire-heatmap', {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [],
-          },
-        });
-
-        map.addLayer({
-          id: 'fire-heatmap',
-          type: 'heatmap',
-          source: 'fire-heatmap',
-          maxzoom: 9,
-          paint: {
-            'heatmap-weight': ['get', 'intensity'],
-            'heatmap-intensity': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              0,
-              1,
-              9,
-              3,
-            ],
-            'heatmap-color': [
-              'interpolate',
-              ['linear'],
-              ['heatmap-density'],
-              0,
-              'rgba(255, 165, 0, 0)',
-              0.1,
-              'rgb(255, 165, 0)',
-              0.3,
-              'rgb(255, 140, 0)',
-              0.5,
-              'rgb(255, 69, 0)',
-              0.7,
-              'rgb(255, 0, 0)',
-              0.9,
-              'rgb(139, 0, 0)',
-              1,
-              'rgb(128, 0, 0)',
-            ],
-            'heatmap-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              0,
-              2,
-              9,
-              30,
-            ],
-            'heatmap-opacity': 1,
-          },
-        });
-
-        // Start the animation after the map is ready
-        startAnimation();
-      });
-    };
-
-    initializeMap();
-
-    return () => {
-      if (animationRef.current) {
-        clearTimeout(animationRef.current);
-      }
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-    };
-  }, []);
-
-  const startAnimation = () => {
-    const N0 = 50;
-    const k = 0.02;
-    const startTime = Date.now();
-
-    const animate = () => {
-      const currTime = Date.now();
-      const t = (currTime - startTime) / 1000;
-
-      console.log('Time:', currTime);
-      console.log('Minutes since start:', t);
-
-      const heatmapData = makeFire(t, N0, k);
-      if (mapRef.current && mapRef.current.getSource('fire-heatmap')) {
-        mapRef.current.getSource('fire-heatmap').setData(heatmapData);
-      }
-
-      if (t < 10) {
-        animationRef.current = setTimeout(animate, 1000);
-      }
-    };
-    animate();
-  };
-
-  const N = (t, N0, k) => {
-    return N0 * Math.exp(k * t);
-  };
-
-  const caliFireCor = (t) => {
+  function caliFireCor(t) {
     const centerCor = [37.1, -122.1];
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
@@ -241,15 +59,15 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     const dx = Rx * r * Math.cos(theta);
     const dy = Ry * r * Math.sin(theta);
 
-    const adjustedDx = dx / Math.cos((centerLat * Math.PI) / 180);
+    const adjustedDx = dx / Math.cos(centerLat * Math.PI / 180);
 
     const lat = centerLat + dy;
     const lon = centerLon + adjustedDx;
 
     return [lon, lat];
-  };
+  }
 
-  const makeFire = (t, N0, k) => {
+  function makeFire(t, N0, k) {
     const points = [];
     const numPoints = N(t, N0, k);
 
@@ -257,23 +75,234 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       const intensity = Math.random() / 2;
 
       points.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: caliFireCor(t),
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": caliFireCor(t)
         },
-        properties: {
-          intensity: intensity,
-        },
+        "properties": {
+          "intensity": intensity
+        }
       });
     }
 
     return {
-      type: 'FeatureCollection',
-      features: points,
+      "type": "FeatureCollection",
+      "features": points
     };
-  };
+  }
 
+  useEffect(() => {
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
+      center: [-122.5, 37.7],
+      zoom: 7,
+      pitch: 60,
+      bearing: -60,
+      antialias: true,
+      attributionControl: false
+    });
+
+    mapRef.current = map;
+
+    map.on('style.load', () => {
+      // map.addSource('emergency-locations', {
+      //   type: 'geojson',
+      //   data: emergencyData
+      // });
+
+      // Add a layer for fire stations
+      // map.addLayer({
+      //   id: 'fire-stations',
+      //   type: 'circle',
+      //   source: 'emergency-locations',
+      //   filter: ['==', ['get', 'type'], 'Fire Station'],
+      //   paint: {
+      //     'circle-radius': 10,
+      //     'circle-color': 'red',
+      //     'circle-opacity': 0.6,
+      //     'circle-stroke-width': 2,
+      //     'circle-stroke-color': 'white'
+      //   }
+      // });
+
+      // // Add a layer for police stations
+      // map.addLayer({
+      //   id: 'police-stations',
+      //   type: 'circle',
+      //   source: 'emergency-locations',
+      //   filter: ['==', ['get', 'type'], 'Police Station'],
+      //   paint: {
+      //     'circle-radius': 10,
+      //     'circle-color': 'blue',
+      //     'circle-opacity': 0.6,
+      //     'circle-stroke-width': 2,
+      //     'circle-stroke-color': 'white'
+      //   }
+      // });
+
+      // map.addSource('mapbox-dem', {
+      //   'type': 'raster-dem',
+      //   'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+      //   'tileSize': 512,
+      //   'maxzoom': 14
+      // });
+      map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 2 });
+
+      map.addLayer({
+        'id': 'sky',
+        'type': 'sky',
+        'paint': {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0.0, 90.0],
+          'sky-atmosphere-sun-intensity': 15
+        }
+      });
+
+       // Add 3D buildings
+       const layers = map.getStyle().layers;
+       const labelLayerId = layers.find(
+         (layer) => layer.type === 'symbol' && layer.layout['text-field']
+       ).id;
+       
+       map.addLayer(
+         {
+           'id': '3d-buildings',
+           'source': 'composite',
+           'source-layer': 'building',
+           'filter': ['==', 'extrude', 'true'],
+           'type': 'fill-extrusion',
+           'paint': {
+             'fill-extrusion-color': '#313131',
+             'fill-extrusion-height': [
+               'interpolate',
+               ['linear'],
+               ['zoom'],
+               0,
+               0,
+               8,
+               ['*', ['get', 'height'], 0.1],
+               12,
+               ['*', ['get', 'height'], 0.5],
+               16,
+               ['get', 'height']
+             ],
+             'fill-extrusion-base': [
+               'interpolate',
+               ['linear'],
+               ['zoom'],
+               0,
+               0,
+               8,
+               ['*', ['get', 'min_height'], 0.1],
+               12,
+               ['*', ['get', 'min_height'], 0.5],
+               16,
+               ['get', 'min_height']
+             ],
+             'fill-extrusion-opacity': [
+               'interpolate',
+               ['linear'],
+               ['zoom'],
+               0,
+               0,
+               8,
+               0.3,
+               12,
+               0.7,
+               16,
+               0.9
+             ]
+           }
+         },
+         labelLayerId
+       );
+
+      // Add fire heatmap source and layer
+      map.addSource('fire-heatmap', {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": []
+        }
+      });
+
+      map.addLayer({
+        "id": "fire-heatmap",
+        "type": "heatmap",
+        "source": "fire-heatmap",
+        "maxzoom": 9,
+        "paint": {
+          "heatmap-weight": ["get", "intensity"],
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 1,
+            9, 3
+          ],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(255, 165, 0, 0)",
+            0.1, "rgb(255, 165, 0)",
+            0.3, "rgb(255, 140, 0)",
+            0.5, "rgb(255, 69, 0)",
+            0.7, "rgb(255, 0, 0)",
+            0.9, "rgb(139, 0, 0)",
+            1, "rgb(128, 0, 0)"
+          ],
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 2,
+            9, 30
+          ],
+          "heatmap-opacity": 1
+        }
+      });
+
+      // Start the fire animation
+      startAnimation();
+    });
+
+    // map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Initialize geocoder
+    const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
+    const geocodingClient = mbxGeocoding({ accessToken: mapboxgl.accessToken });
+    setGeocoder(geocodingClient);
+
+    // Add user location marker
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([longitude, latitude]);
+
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+
+        new mapboxgl.Marker(el)
+          .setLngLat([longitude, latitude])
+          .addTo(map);
+
+        map.flyTo({
+          center: [longitude, latitude],
+          zoom: 14
+        });
+      });
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      map.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!geocoder || !mapRef.current) return;
@@ -316,27 +345,27 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
         }
       };
 
-      // if (mapRef.current.getSource(layerId)) {
-      //   mapRef.current.getSource(layerId).setData(geojson);
-      // } else {
-      //   mapRef.current.addLayer({
-      //     id: layerId,
-      //     type: 'line',
-      //     source: {
-      //       type: 'geojson',
-      //       data: geojson
-      //     },
-      //     layout: {
-      //       'line-join': 'round',
-      //       'line-cap': 'round'
-      //     },
-      //     paint: {
-      //       'line-color': lineColor,
-      //       'line-width': 5,
-      //       'line-opacity': 0.75
-      //     }
-      //   });
-      // }
+      if (mapRef.current.getSource(layerId)) {
+        mapRef.current.getSource(layerId).setData(geojson);
+      } else {
+        mapRef.current.addLayer({
+          id: layerId,
+          type: 'line',
+          source: {
+            type: 'geojson',
+            data: geojson
+          },
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': lineColor,
+            'line-width': 5,
+            'line-opacity': 0.75
+          }
+        });
+      }
     };
 
     const updateMarkers = async () => {
@@ -444,10 +473,59 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
 
   const handleToggleTopOverlay = () => {
     setIsTopOverlayVisible(!isTopOverlayVisible);
+    if (!isTopOverlayVisible && !isCallAccepted && !isCallDeclined) {
+      audioRef.current.loop = true;
+      audioRef.current.play();
+    }
   };
 
   const handleHideTopOverlay = () => {
     setIsTopOverlayVisible(false);
+    stopSound();
+  };
+
+  const handleAcceptCall = () => {
+    setIsCallAccepted(true);
+    stopSound();
+    // Add any other logic for accepting the call
+  };
+
+  const handleDeclineCall = () => {
+    setIsCallDeclined(true);
+    stopSound();
+    // Add any other logic for declining the call
+  };
+
+  const stopSound = () => {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+  };
+
+  const startAnimation = () => {
+    const N0 = 50;
+    const k = 0.02;
+    const startTime = new Date();
+  
+    const animate = () => {
+      const currTime = new Date();
+      const t = (currTime - startTime) / 10000; // Convert to seconds
+  
+      const heatmapData = makeFire(t, N0, k);
+
+      console.log("Got heatmap data");
+  
+      if (mapRef.current && mapRef.current.getSource('fire-heatmap')) {
+        mapRef.current.getSource('fire-heatmap').setData(heatmapData);
+      }
+  
+      if (t < 10) {
+        setTimeout(animationRef.current = requestAnimationFrame(animate), 10000);
+      } else {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  
+    animate();
   };
 
   return (
@@ -458,6 +536,10 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
           <TopOverlay 
             isDropped={isTopOverlayVisible} 
             onHide={handleHideTopOverlay}
+            onAcceptCall={handleAcceptCall}
+            onDeclineCall={handleDeclineCall}
+            isCallAccepted={isCallAccepted}
+            isCallDeclined={isCallDeclined}
           />
         </div>
         <div className="overlay-container bottom-overlay">

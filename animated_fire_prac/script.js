@@ -375,10 +375,10 @@ map.on('load', async () => {
         console.log(startTime)
         async function animate() {
             const currTime = new Date();
-            const t = (currTime - startTime)/60000;
+            const t = (currTime - startTime)/1000; // Change to seconds instead of minutes
 
             console.log("Time:", currTime);
-            console.log("Minutes since start:", t);
+            console.log("Seconds since start:", t);
 
             const heatmapData = makeFire(t, N0, k)
             map.getSource('fire-heatmap').setData(heatmapData);
@@ -391,7 +391,7 @@ map.on('load', async () => {
             console.log(keyPressed);
 
             if (!keyPressed) {
-                setTimeout(animate, 60000); 
+                setTimeout(animate, 1000); // Reduce the delay to 1 second (1000 ms)
             }
         }
         animate()
