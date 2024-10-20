@@ -583,7 +583,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       }
 
       if (distanceToOvalEdge(t, userLocation[0], userLocation[1]) <= 50) {
-
+        handleToggleTopOverlay();
       }
   
       if (t < 10) {

@@ -263,10 +263,10 @@ const StyledVerticalBorder = styled.div`
   & .text-wrapper-5 {
     color: #a1a1a1;
     font-family: "SF Pro Text-Regular", Helvetica;
-    font-size: 11px;
+    font-size: 8px;
     font-weight: 600;
     letter-spacing: 0;
-    line-height: 24px;
+    line-height: 20px;
     position: relative;
     text-align: center;
     white-space: nowrap;
@@ -346,17 +346,18 @@ export const BottomOverlay = ({
           <div className="text-wrapper-5">
             {"Built by "}
             <a
-              href="https://twitter.com/cjarrayadev"
+              href="https://www.linkedin.com/in/akash-wudali-63027a261/"
               style={{ textDecoration: "underline" }}
             >
-              Christopher Arraya
+              Akash Wudali
             </a>
             {"  "}
+            
             <a
-              href="https://x.com/tahaha_a"
+              href="https://twitter.com/rzhang139"
               style={{ textDecoration: "underline" }}
             >
-              Taha Ansari
+              Richard Zhang
             </a>
             {""}
           </div>
@@ -369,17 +370,14 @@ export const BottomOverlay = ({
             </a>
             {"  "}
             <a
-              href="https://twitter.com/rzhang139"
+              href="https://www.linkedin.com/in/vaibhavasudevan/"
               style={{ textDecoration: "underline" }}
             >
-              Richard Zhang
+              Vaibhav Vasudevan
             </a>
           </div>
         </div>
       </div>
-      <ToggleButton onClick={onToggleTopOverlay} isTopOverlayVisible={isTopOverlayVisible}>
-        {isTopOverlayVisible ? 'Hide Top Overlay' : 'Show Top Overlay'}
-      </ToggleButton>
     </StyledBottomOverlay>
   );
 };
@@ -394,4 +392,5 @@ const StyledBottomOverlay = styled.div`
   color: #ffffff;
   max-height: 70vh;
   overflow-y: auto;
+  max-width: 500px;
 `;
