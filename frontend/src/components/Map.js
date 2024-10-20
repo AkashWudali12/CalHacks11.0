@@ -42,7 +42,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   }
 
   function caliFireCor(t) {
-    const centerCor = [37.1, -122.1];
+    const centerCor = [37.7, -122.4];
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
     const R0 = 0.045;
@@ -68,7 +68,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   }
 
   function distanceToOvalEdge(t, lon, lat) {
-    const centerCor = [37.1, -122.1]; // [latitude, longitude]
+    const centerCor = [37.7, -122.4]; // [latitude, longitude]
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
     const R0 = 0.045; // Initial radius in degrees (≈5 km)
