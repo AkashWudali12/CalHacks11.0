@@ -41,6 +41,8 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [route, setRoute] = useState(null);
   const [firePoints, setFirePoints] = useState([]);
   const [animationTime, setAnimationTime] = useState(0);
+  const [cameraTarget, setCameraTarget] = useState([-122.5, 37.7]); // Default center
+  const [cameraAngle, setCameraAngle] = useState(0);
 
   // Add these new functions
   function N(t, N0, k) {
@@ -51,10 +53,10 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     const centerCor = [37.7, -122.4];
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
-    const R0 = 0.01; // Increased initial radius
+    const R0 = 0.0033; // Reduced initial radius (1/3 of original 0.01)
 
-    const a = 0.0005; // Increased growth rate
-    const b = 0.001;
+    const a = 0.000167; // Reduced growth rate (1/3 of original 0.0005)
+    const b = 0.000333; // Reduced growth rate (1/3 of original 0.001)
 
     const Rx = R0 + a * t;
     const Ry = R0 + b * t;
@@ -87,11 +89,11 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     const centerCor = [37.1, -122.1]; // [latitude, longitude]
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
-    const R0 = 0.045; // Initial radius in degrees (≈5 km)
+    const R0 = 0.015; // Reduced initial radius (1/3 of original 0.045)
 
     // Constants for radii increase
-    const a = 0.005; // Horizontal radius increase per time unit
-    const b = 0.02;  // Vertical radius increase per time unit
+    const a = 0.00167; // Reduced horizontal radius increase (1/3 of original 0.005)
+    const b = 0.00667; // Reduced vertical radius increase (1/3 of original 0.02)
 
     // Calculate radii at time t
     const Rx = R0 + a * t;
@@ -471,8 +473,9 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
         }
       });
 
-      // Start the fire animation
+      // Start the fire animation and camera orbit
       startAnimation();
+      // startCameraOrbit();
     });
 
     // map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -645,9 +648,40 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     audioRef.current.currentTime = 0;
   };
 
+  const startCameraOrbit = () => {
+    const orbitCamera = () => {
+      if (mapRef.current) {
+        const radius = 0.05; // Reduced radius for a tighter orbit
+        const newAngle = (cameraAngle + 0.1) % 360; // Increment angle
+        
+        const offsetX = radius * Math.cos(newAngle * Math.PI / 180);
+        const offsetY = radius * Math.sin(newAngle * Math.PI / 180);
+        
+        const newCenter = [
+          cameraTarget[0] + offsetX,
+          cameraTarget[1] + offsetY
+        ];
+
+        mapRef.current.easeTo({
+          center: newCenter,
+          zoom: 13, // Increased zoom level
+          duration: 1000,
+          pitch: 60,
+          bearing: newAngle
+        });
+
+        setCameraAngle(newAngle);
+      }
+
+      requestAnimationFrame(orbitCamera);
+    };
+
+    orbitCamera();
+  };
+
   const startAnimation = () => {
-    const N0 = 30; // Initial number of points
-    const k = 0.02; // Growth rate
+    const N0 = 10; // Reduced initial number of points (1/3 of original 30)
+    const k = 0.00667; // Reduced growth rate (1/3 of original 0.02)
     const startTime = new Date();
   
     const animate = () => {
@@ -662,14 +696,19 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
         mapRef.current.getSource('fire-heatmap').setData(heatmapData);
       }
 
+      // Update camera target to average of user location and fire center
+      if (userLocation) {
+        setCameraTarget(userLocation);
+      }
+
       console.log(`Animation frame: ${t} seconds, ${heatmapData.features.length} points`);
 
-      // Call handleToggleTopOverlay after 20 seconds
-      if (t === 20) {
+      // Call handleToggleTopOverlay after 60 seconds (increased from 20 seconds)
+      if (t === 30) {
         handleToggleTopOverlay();
       }
 
-      if (t < 600) { // Run for 10 minutes (600 seconds)
+      if (t < 1800) { // Run for 30 minutes (1800 seconds, increased from 600 seconds)
         setTimeout(() => {
           animationRef.current = requestAnimationFrame(animate);
         }, 1000); // Update every second
