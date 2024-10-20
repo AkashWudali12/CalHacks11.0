@@ -7,6 +7,7 @@ import { BottomOverlay } from './BottomOverlay';
 import { TopOverlay } from './TopOverlay'; // Add this import
 import * as turf from '@turf/turf';
 import pingSound from '../assets/alarm.mp3'; // Add this import
+import { v4 as uuidv4 } from 'uuid'; // Add this import
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmxhaXJvcmNoYXJkIiwiYSI6ImNsNWZzeGtrNDEybnMzaXA4eHRuOGU5NDUifQ.s59N5x1EqfyPZxeImzNwbw';
 
@@ -35,29 +36,41 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [isCallDeclined, setIsCallDeclined] = useState(false);
   const audioRef = useRef(new Audio(pingSound));
   const [userLocation, setUserLocation] = useState(null);
+  const [firePoints, setFirePoints] = useState([]);
+  const [animationTime, setAnimationTime] = useState(0);
 
   // Add these new functions
   function N(t, N0, k) {
     return N0 * (Math.exp(k * t));
   }
 
-  function caliFireCor(t) {
+  function caliFireCor(t, existingPoint = null) {
     const centerCor = [37.7, -122.4];
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
-    const R0 = 0.045;
+    const R0 = 0.01; // Increased initial radius
 
-    const a = 0.005;
-    const b = 0.02;
+    const a = 0.0005; // Increased growth rate
+    const b = 0.001;
 
     const Rx = R0 + a * t;
     const Ry = R0 + b * t;
 
-    const theta = Math.random() * 2 * Math.PI;
-    const r = Math.sqrt(Math.random());
+    let theta, r;
+    if (existingPoint) {
+      const [lon, lat] = existingPoint.geometry.coordinates;
+      theta = Math.atan2(lat - centerLat, (lon - centerLon) * Math.cos(centerLat * Math.PI / 180));
+      r = Math.sqrt(Math.pow((lon - centerLon) * Math.cos(centerLat * Math.PI / 180), 2) + Math.pow(lat - centerLat, 2)) / Math.max(Rx, Ry);
+    } else {
+      theta = Math.random() * 2 * Math.PI;
+      r = Math.sqrt(Math.random());
+    }
 
-    const dx = Rx * r * Math.cos(theta);
-    const dy = Ry * r * Math.sin(theta);
+    const randomOffset = (Math.random() - 0.5) * 0.0002; // Increased random offset
+    const northWindVector = 0.0001 * t; // Increased wind strength
+
+    const dx = Rx * r * Math.cos(theta) + randomOffset;
+    const dy = Ry * r * Math.sin(theta) + randomOffset + northWindVector;
 
     const adjustedDx = dx / Math.cos(centerLat * Math.PI / 180);
 
@@ -110,26 +123,33 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
 }
 
 
-  function makeFire(t, N0, k) {
-    const points = [];
-    const numPoints = N(t, N0, k);
+  function makeFire(t, N0, k, existingPoints = []) {
+    const points = [...existingPoints];
+    const newPointsCount = Math.floor(N(t, N0, k)) - points.length;
 
-    for (let p = 0; p < numPoints; p++) {
+    // Update existing points
+    points.forEach(point => {
+      const updatedCoordinates = caliFireCor(t, point);
+      point.geometry.coordinates = updatedCoordinates;
+      point.properties.intensity = Math.min(point.properties.intensity + 0.02, 1); // Faster intensity increase
+    });
+
+    // Add new points
+    for (let p = 0; p < newPointsCount; p++) {
       const pt = caliFireCor(t);
-      if (corOnLand(pt)) {
-        const intensity = Math.random() / 2;
+      const intensity = Math.random() * 0.4 + 0.2; // Initial intensity between 0.2 and 0.6
 
-        points.push({
-          "type": "Feature",
-          "geometry": {
-            "type": "Point",
-            "coordinates": pt
-          },
-          "properties": {
-            "intensity": intensity
-          }
-        });
-      }
+      points.push({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": pt
+        },
+        "properties": {
+          "intensity": intensity,
+          "id": uuidv4()
+        }
+      });
     }
 
     return {
@@ -296,7 +316,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
         "id": "fire-heatmap",
         "type": "heatmap",
         "source": "fire-heatmap",
-        "maxzoom": 9,
+        // Remove the maxzoom property
         "paint": {
           "heatmap-weight": ["get", "intensity"],
           "heatmap-intensity": [
@@ -304,7 +324,8 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
             ["linear"],
             ["zoom"],
             0, 1,
-            9, 3
+            9, 3,
+            22, 5 // Add a higher zoom level with increased intensity
           ],
           "heatmap-color": [
             "interpolate",
@@ -323,9 +344,17 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
             ["linear"],
             ["zoom"],
             0, 2,
-            9, 30
+            9, 30,
+            22, 60 // Add a higher zoom level with increased radius
           ],
-          "heatmap-opacity": 1
+          "heatmap-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7, 1,
+            9, 0.9,
+            22, 0.8 // Gradually decrease opacity at higher zoom levels
+          ]
         }
       });
 
@@ -432,72 +461,6 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       }
     };
 
-    const updateMarkers = async () => {
-      for (const call of calls) {
-        if (!call.location) continue;
-
-        //make sure callStatus is active
-        if (call.callStatus !== "active") continue;
-
-        try {
-          const response = await geocoder.forwardGeocode({
-            query: call.location,
-            limit: 1
-          }).send();
-
-          if (response && response.body && response.body.features && response.body.features.length) {
-            const [lng, lat] = response.body.features[0].center;
-
-            if (markersRef.current[call.id]) {
-              // Update existing marker
-              markersRef.current[call.id].setLngLat([lng, lat]);
-            } else {
-              // Create new marker
-              const markerNode = document.createElement('div');
-              const root = createRoot(markerNode);
-              root.render(<Marker onClick={markerClicked} call={call} />);
-
-              const marker = new mapboxgl.Marker(markerNode)
-                .setLngLat([lng, lat])
-                .addTo(mapRef.current);
-
-              markersRef.current[call.id] = marker;
-            }
-            newMarkers.push({ id: call.id, lngLat: [lng, lat] });
-
-            const callLocation = [lng, lat];
-
-            if (call.dispatchInformation && call.dispatchInformation.fire) {
-              const nearestFireStation = getNearestStation('Fire Station', callLocation);
-              if (nearestFireStation) {
-                getRoute(nearestFireStation, callLocation, `fire-route-${call.id}`, 'red');
-              }
-            }
-
-            if (call.dispatchInformation && call.dispatchInformation.police) {
-              const nearestPoliceStation = getNearestStation('Police Station', callLocation);
-              if (nearestPoliceStation) {
-                getRoute(nearestPoliceStation, callLocation, `police-route-${call.id}`, 'blue');
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error geocoding location:', error);
-        }
-      }
-
-      // Remove markers for calls that no longer exist
-      Object.keys(markersRef.current).forEach(id => {
-        if (!calls.find(call => call.id === id)) {
-          markersRef.current[id].remove();
-          delete markersRef.current[id];
-        }
-      });
-
-      setMarkers(newMarkers);
-    };
-
-    updateMarkers();
   }, [calls, geocoder]);
 
   useEffect(() => {
@@ -531,9 +494,13 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     };
   }, [markers]);
 
-  const markerClicked = call => {
-    console.log('Marker clicked:', call);
-  };
+  useEffect(() => {
+    if (mapRef.current) {
+      mapRef.current.on('load', () => {
+        startAnimation();
+      });
+    }
+  }, [mapRef.current]);
 
   const handleToggleTopOverlay = () => {
     setIsTopOverlayVisible(!isTopOverlayVisible);
@@ -566,28 +533,33 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   };
 
   const startAnimation = () => {
-    const N0 = 50;
-    const k = 0.02;
+    const N0 = 30; // Initial number of points
+    const k = 0.02; // Growth rate
     const startTime = new Date();
   
     const animate = () => {
       const currTime = new Date();
-      const t = (currTime - startTime) / 10000; // Convert to seconds
+      const t = Math.floor((currTime - startTime) / 1000);
+      setAnimationTime(t);
   
-      const heatmapData = makeFire(t, N0, k);
-
-      console.log("Got heatmap data");
+      const heatmapData = makeFire(t, N0, k, firePoints);
+      setFirePoints(heatmapData.features);
   
       if (mapRef.current && mapRef.current.getSource('fire-heatmap')) {
         mapRef.current.getSource('fire-heatmap').setData(heatmapData);
       }
 
-      if (distanceToOvalEdge(t, userLocation[0], userLocation[1]) <= 50) {
+      console.log(`Animation frame: ${t} seconds, ${heatmapData.features.length} points`);
+
+      // Call handleToggleTopOverlay after 20 seconds
+      if (t === 20) {
         handleToggleTopOverlay();
       }
-  
-      if (t < 10) {
-        setTimeout(animationRef.current = requestAnimationFrame(animate), 10000);
+
+      if (t < 600) { // Run for 10 minutes (600 seconds)
+        setTimeout(() => {
+          animationRef.current = requestAnimationFrame(animate);
+        }, 1000); // Update every second
       } else {
         cancelAnimationFrame(animationRef.current);
       }
