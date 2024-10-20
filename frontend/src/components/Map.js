@@ -7,6 +7,7 @@ import { BottomOverlay } from './BottomOverlay';
 import { TopOverlay } from './TopOverlay'; // Add this import
 import * as turf from '@turf/turf';
 import pingSound from '../assets/alarm.mp3'; // Add this import
+// import { getCurrentPosition, getOptimalDestination, showDirections } from '../../../animated_fire_prac/script';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmxhaXJvcmNoYXJkIiwiYSI6ImNsNWZzeGtrNDEybnMzaXA4eHRuOGU5NDUifQ.s59N5x1EqfyPZxeImzNwbw';
 
@@ -35,6 +36,9 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [isCallDeclined, setIsCallDeclined] = useState(false);
   const audioRef = useRef(new Audio(pingSound));
   const [userLocation, setUserLocation] = useState(null);
+  const [currentPosition, setCurrentPosition] = useState(null);
+  const [optimalDestination, setOptimalDestination] = useState(null);
+  const [route, setRoute] = useState(null);
 
   // Add these new functions
   function N(t, N0, k) {
@@ -42,7 +46,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   }
 
   function caliFireCor(t) {
-    const centerCor = [37.7, -122.4];
+    const centerCor = [37.1, -122.1];
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
     const R0 = 0.045;
@@ -68,7 +72,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   }
 
   function distanceToOvalEdge(t, lon, lat) {
-    const centerCor = [37.7, -122.4]; // [latitude, longitude]
+    const centerCor = [37.1, -122.1]; // [latitude, longitude]
     const centerLat = centerCor[0];
     const centerLon = centerCor[1];
     const R0 = 0.045; // Initial radius in degrees (≈5 km)
@@ -154,9 +158,119 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     catch (error) {
         return false;
     }
-}
+  }
+
+  function getCurrentPosition() {
+      console.log("Called");
+      return new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+              (position) => {
+                  const userLat = position.coords.latitude;
+                  const userLon = position.coords.longitude;
+                  console.log("Got user's coordinates:", userLon, userLat);
+                  resolve([userLon, userLat]);
+              },
+              (error) => {
+                  console.log("Error:", error);
+                  reject(error);
+              }
+          );
+      });
+  }
+
+  async function getOptimalDestination(currentPosition) {
+
+      // optimization logic, simulate next few timesteps of fire to see where to go.
+      const addressLst = ["San Rafael, California", 
+          "Novato, California",
+          "Santa Rosa, California",
+          "Napa, California"
+      ]
+    
+
+      var toRet = []
+      var minDist = -1;
+
+      for (let i = 0; i < addressLst.length; i++) {
+          const address = addressLst[i];
+          const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}`;
+
+          try {
+              const response = await fetch(geocodingUrl);
+              const data = await response.json();
+              const [destLon, destLat] = data.features[0].center;
+              const dist = getDistance(currentPosition, [destLon, destLat])
+              if (dist < minDist || (minDist == -1)) {
+                  toRet = [destLon, destLat];
+                  minDist = dist;
+              }
+          }
+      
+          catch (error) {
+              console.log("Could not get optimal destination:", error);
+          }
+      }
+
+      return toRet
+  }
+
+  async function showDirections(startCors, destinationCors) {
+      const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCors[0]},${startCors[1]};${destinationCors[0]},${destinationCors[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+      try {
+          const response = await fetch(directionsUrl);
+          const data = await response.json();
+          const route = data.routes[0];
+          const instructions = route.legs[0].steps.map(step => step.maneuver.instruction);
+          console.log("Instructions:", instructions)
+          return route;
+      }
+
+      catch (error) {
+          console.log(error);
+          return null;
+      }
+  }
+
+  function getDistance(p1, p2) {
+      const [lon1, lat1] = p1;
+      const [lon2, lat2] = p2;
+      
+      const R = 6371; // Radius of the Earth in kilometers
+
+      // Convert degrees to radians
+      const toRadians = (degrees) => degrees * (Math.PI / 180);
+
+      const dLat = toRadians(lat2 - lat1);
+      const dLon = toRadians(lon2 - lon1);
+
+      const a = 
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      const distance = R * c; // Distance in kilometers
+
+      return distance;
+  }
+
+
 
   useEffect(() => {
+    async function fetchData() {
+      const position = await getCurrentPosition();
+      setCurrentPosition(position);
+
+      const destination = await getOptimalDestination(position);
+      setOptimalDestination(destination);
+
+      const routeData = await showDirections(position, destination);
+      setRoute(routeData);
+    }
+
+    fetchData();
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
@@ -608,6 +722,9 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
             onDeclineCall={handleDeclineCall}
             isCallAccepted={isCallAccepted}
             isCallDeclined={isCallDeclined}
+            currentPosition={currentPosition}
+            optimalDestination={optimalDestination}
+            route={route}
           />
         </div>
         <div className="overlay-container bottom-overlay">

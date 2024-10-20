@@ -346,17 +346,17 @@ export const BottomOverlay = ({
           <div className="text-wrapper-5">
             {"Built by "}
             <a
-              href="https://twitter.com/cjarrayadev"
+              href="https://www.linkedin.com/in/vaibhavasudevan/"
               style={{ textDecoration: "underline" }}
             >
-              Christopher Arraya
+              Vaibhav Vasudevan
             </a>
             {"  "}
             <a
-              href="https://x.com/tahaha_a"
+              href="https://www.linkedin.com/in/akash-wudali-63027a261/"
               style={{ textDecoration: "underline" }}
             >
-              Taha Ansari
+              Akash Wudali
             </a>
             {""}
           </div>

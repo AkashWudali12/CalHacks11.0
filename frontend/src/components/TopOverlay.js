@@ -127,7 +127,7 @@ const WaveformBar = styled.div`
   animation-delay: ${props => props.delay}s;
 `;
 
-export const TopOverlay = ({ isDropped, onHide, onAcceptCall, onDeclineCall, isCallAccepted, isCallDeclined }) => {
+export const TopOverlay = ({ isDropped, onHide, onAcceptCall, onDeclineCall, isCallAccepted, isCallDeclined, currentPosition, optimalDestination, route  }) => {
   const [vapi, setVapi] = useState(null);
   const [callActive, setCallActive] = useState(false);
   const [isSlideUp, setIsSlideUp] = useState(false);
@@ -158,9 +158,14 @@ export const TopOverlay = ({ isDropped, onHide, onAcceptCall, onDeclineCall, isC
 
   const startCall = () => {
     if (vapi && !callActive) {
-      vapi.start({
-        name: "Fire Evacuation Assistant",
-        firstMessage: `Emergency! This is the Fire Evacuation Assistant. I'm here to guide you to safety. What's your current location in the building?`,
+    // Extract route instructions
+    const instructions = route.legs[0].steps.map(step => step.maneuver.instruction);
+    const instructionsText = instructions.join(' Then, ');
+    const userLocationDesc = "near the intersection of Van Ness Avenue and Grove Street, close to City Hall";
+
+    vapi.start('1632d22c-6b94-4a72-bc5f-be70f99dd14f', {
+      name: "Fire Evacuation Assistant",
+      firstMessage: `Emergency! This is the Fire Evacuation Assistant. I'm here to guide you to safety. You're currently ${userLocationDesc} in San Francisco. Are you ready to begin evacuation?`,
         transcriber: {
           provider: "deepgram",
           model: "nova-2",
@@ -176,9 +181,54 @@ export const TopOverlay = ({ isDropped, onHide, onAcceptCall, onDeclineCall, isC
           messages: [
             {
               role: "system",
-              content: `You are a Fire Evacuation Assistant. Guide the user to safety, asking for their location and providing clear, calm instructions for evacuation. Prioritize user safety and quick evacuation.`
+              content: `You are a Fire Evacuation Assistant. Guide the user to safety, providing clear, 
+              calm instructions for evacuation. Prioritize user safety and quick evacuation. 
+              Current user location: ${currentPosition.join(', ')}
+              Safe destination: ${optimalDestination.join(', ')}
+              Route instructions: ${instructionsText}
+              
+              Provide these instructions to the user step by step, ensuring they understand each direction before moving to the next. Specify the street names that are familiar with human. Ask for confirmation after each major step. If the user seems confused or lost, repeat the current step and offer clarification.`
+              
             }
           ],
+
+// 
+// 0
+// : 
+// "Drive northwest."
+// 1
+// : 
+// "Turn left."
+// 2
+// : 
+// "Turn left onto 4th Street."
+// 3
+// : 
+// "Turn left onto Folsom Street."
+// 4
+// : 
+// "Turn left onto 3rd Street."
+// 5
+// : 
+// "Turn left onto Broadway."
+// 6
+// : 
+// "Turn right onto US 101 North/Van Ness Avenue."
+// 7
+// : 
+// "Turn left onto US 101 North/Lombard Street."
+// 8
+// : 
+// "Keep right to stay on US 101 North."
+// 9
+// : 
+// "Take exit 452 toward Central San Rafael."
+// 10
+// : 
+// "Turn left onto Third Street."
+// 11
+// : 
+// "You have arrived at your destination."
         },
       });
       onAcceptCall(); // Call this to inform the parent component
