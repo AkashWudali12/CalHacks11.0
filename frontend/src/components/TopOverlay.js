@@ -115,8 +115,8 @@ const WaveformContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  width: 50%;
+  height: 50%;
 `;
 
 const WaveformBar = styled.div`
@@ -127,7 +127,7 @@ const WaveformBar = styled.div`
   animation-delay: ${props => props.delay}s;
 `;
 
-export const TopOverlay = ({ isDropped, onHide }) => {
+export const TopOverlay = ({ isDropped, onHide, onAcceptCall, onDeclineCall, isCallAccepted, isCallDeclined }) => {
   const [vapi, setVapi] = useState(null);
   const [callActive, setCallActive] = useState(false);
   const [isSlideUp, setIsSlideUp] = useState(false);
@@ -181,6 +181,8 @@ export const TopOverlay = ({ isDropped, onHide }) => {
           ],
         },
       });
+      onAcceptCall(); // Call this to inform the parent component
+      setCallActive(true);
     }
   };
 
@@ -188,11 +190,12 @@ export const TopOverlay = ({ isDropped, onHide }) => {
     if (vapi && callActive) {
       vapi.stop();
     }
+    setCallActive(false);
     setIsSlideUp(true);
     setTimeout(() => {
       onHide();
       setIsSlideUp(false);
-    }, 300); // Match this with the animation duration
+    }, 300);
   };
 
   const renderButtonContent = () => {
@@ -208,6 +211,11 @@ export const TopOverlay = ({ isDropped, onHide }) => {
     return <FaPhone />;
   };
 
+  const handleDecline = () => {
+    onDeclineCall();
+    // Add any other logic for declining the call
+  };
+
   return (
     <StyledTopOverlay isDropped={isDropped} isSlideUp={isSlideUp}>
       <OverlayContent>
@@ -216,7 +224,7 @@ export const TopOverlay = ({ isDropped, onHide }) => {
           <GreenButton onClick={startCall} disabled={callActive}>
             {renderButtonContent()}
           </GreenButton>
-          <RedButton onClick={endCall} disabled={!callActive}>
+          <RedButton onClick={endCall}>
             <FaPhoneSlash />
           </RedButton>
         </ButtonContainer>

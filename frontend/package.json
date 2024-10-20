@@ -12,6 +12,7 @@
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.2.2",
     "@testing-library/user-event": "^12.6.0",
+    "@turf/turf": "^7.1.0",
     "@types/react-router": "^5.1.20",
     "@types/react-syntax-highlighter": "11.0.4",
     "@vapi-ai/web": "^2.1.4",

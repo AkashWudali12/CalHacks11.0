@@ -5,6 +5,8 @@ import { createRoot } from 'react-dom/client';
 import './Map.css';
 import { BottomOverlay } from './BottomOverlay';
 import { TopOverlay } from './TopOverlay'; // Add this import
+import * as turf from '@turf/turf';
+import pingSound from '../assets/alarm.mp3'; // Add this import
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmxhaXJvcmNoYXJkIiwiYSI6ImNsNWZzeGtrNDEybnMzaXA4eHRuOGU5NDUifQ.s59N5x1EqfyPZxeImzNwbw';
 
@@ -29,15 +31,76 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [geocoder, setGeocoder] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [isTopOverlayVisible, setIsTopOverlayVisible] = useState(false);
+  const [fireData, setFireData] = useState(null);
+  const [isCallAccepted, setIsCallAccepted] = useState(false);
+  const [isCallDeclined, setIsCallDeclined] = useState(false);
+  const audioRef = useRef(new Audio(pingSound));
+  const [userLocation, setUserLocation] = useState(null);
+
+  // Add these new functions
+  function N(t, N0, k) {
+    return N0 * (Math.exp(k * t));
+  }
+
+  function caliFireCor(t) {
+    const centerCor = [37.1, -122.1];
+    const centerLat = centerCor[0];
+    const centerLon = centerCor[1];
+    const R0 = 0.045;
+
+    const a = 0.005;
+    const b = 0.02;
+
+    const Rx = R0 + a * t;
+    const Ry = R0 + b * t;
+
+    const theta = Math.random() * 2 * Math.PI;
+    const r = Math.sqrt(Math.random());
+
+    const dx = Rx * r * Math.cos(theta);
+    const dy = Ry * r * Math.sin(theta);
+
+    const adjustedDx = dx / Math.cos(centerLat * Math.PI / 180);
+
+    const lat = centerLat + dy;
+    const lon = centerLon + adjustedDx;
+
+    return [lon, lat];
+  }
+
+  function makeFire(t, N0, k) {
+    const points = [];
+    const numPoints = N(t, N0, k);
+
+    for (let p = 0; p < numPoints; p++) {
+      const intensity = Math.random() / 2;
+
+      points.push({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": caliFireCor(t)
+        },
+        "properties": {
+          "intensity": intensity
+        }
+      });
+    }
+
+    return {
+      "type": "FeatureCollection",
+      "features": points
+    };
+  }
 
   useEffect(() => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
-      // center: [-122.272747, 37.871853],
-      // zoom: 12,
-      // pitch: 60,
-      // bearing: -60,
+      center: [-122.5, 37.7],
+      zoom: 7,
+      pitch: 60,
+      bearing: -60,
       antialias: true,
       attributionControl: false
     });
@@ -156,6 +219,55 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
          },
          labelLayerId
        );
+
+      // Add fire heatmap source and layer
+      map.addSource('fire-heatmap', {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": []
+        }
+      });
+
+      map.addLayer({
+        "id": "fire-heatmap",
+        "type": "heatmap",
+        "source": "fire-heatmap",
+        "maxzoom": 9,
+        "paint": {
+          "heatmap-weight": ["get", "intensity"],
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 1,
+            9, 3
+          ],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(255, 165, 0, 0)",
+            0.1, "rgb(255, 165, 0)",
+            0.3, "rgb(255, 140, 0)",
+            0.5, "rgb(255, 69, 0)",
+            0.7, "rgb(255, 0, 0)",
+            0.9, "rgb(139, 0, 0)",
+            1, "rgb(128, 0, 0)"
+          ],
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 2,
+            9, 30
+          ],
+          "heatmap-opacity": 1
+        }
+      });
+
+      // Start the fire animation
+      startAnimation();
     });
 
     // map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -164,6 +276,26 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
     const geocodingClient = mbxGeocoding({ accessToken: mapboxgl.accessToken });
     setGeocoder(geocodingClient);
+
+    // Add user location marker
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([longitude, latitude]);
+
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+
+        new mapboxgl.Marker(el)
+          .setLngLat([longitude, latitude])
+          .addTo(map);
+
+        map.flyTo({
+          center: [longitude, latitude],
+          zoom: 14
+        });
+      });
+    }
 
     return () => {
       if (animationRef.current) {
@@ -342,11 +474,57 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
 
   const handleToggleTopOverlay = () => {
     setIsTopOverlayVisible(!isTopOverlayVisible);
+    if (!isTopOverlayVisible && !isCallAccepted && !isCallDeclined) {
+      audioRef.current.loop = true;
+      audioRef.current.play();
+    }
   };
 
   const handleHideTopOverlay = () => {
     setIsTopOverlayVisible(false);
+    stopSound();
   };
+
+  const handleAcceptCall = () => {
+    setIsCallAccepted(true);
+    stopSound();
+    // Add any other logic for accepting the call
+  };
+
+  const handleDeclineCall = () => {
+    setIsCallDeclined(true);
+    stopSound();
+    // Add any other logic for declining the call
+  };
+
+  const stopSound = () => {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+  };
+
+  const startAnimation = () => {
+    const N0 = 50;
+    const k = 0.02;
+    const startTime = new Date();
+
+    const animate = () => {
+      const currTime = new Date();
+      const t = (currTime - startTime) / 1000; // Change to seconds
+
+      const heatmapData = makeFire(t, N0, k);
+      setFireData(heatmapData);
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+  };
+
+  useEffect(() => {
+    if (fireData && mapRef.current) {
+      mapRef.current.getSource('fire-heatmap').setData(fireData);
+    }
+  }, [fireData]);
 
   return (
     <div className="map-container">
@@ -356,6 +534,10 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
           <TopOverlay 
             isDropped={isTopOverlayVisible} 
             onHide={handleHideTopOverlay}
+            onAcceptCall={handleAcceptCall}
+            onDeclineCall={handleDeclineCall}
+            isCallAccepted={isCallAccepted}
+            isCallDeclined={isCallDeclined}
           />
         </div>
         <div className="overlay-container bottom-overlay">

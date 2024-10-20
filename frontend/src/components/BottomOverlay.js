@@ -386,7 +386,7 @@ export const BottomOverlay = ({
 
 const StyledBottomOverlay = styled.div`
   background-color: rgba(0, 0, 0, 0.95);
-  border-radius: 20px;
+  border-radius: 30px;
   padding: 20px;
   margin-left: 10px;
   margin-right: 10px;
