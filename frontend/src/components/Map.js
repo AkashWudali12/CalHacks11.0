@@ -67,23 +67,69 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     return [lon, lat];
   }
 
+  function distanceToOvalEdge(t, lon, lat) {
+    const centerCor = [37.1, -122.1]; // [latitude, longitude]
+    const centerLat = centerCor[0];
+    const centerLon = centerCor[1];
+    const R0 = 0.045; // Initial radius in degrees (≈5 km)
+
+    // Constants for radii increase
+    const a = 0.005; // Horizontal radius increase per time unit
+    const b = 0.02;  // Vertical radius increase per time unit
+
+    // Calculate radii at time t
+    const Rx = R0 + a * t;
+    const Ry = R0 + b * t;
+
+    // Calculate offsets from center
+    const adjustedDx = lon - centerLon;
+    const dx = adjustedDx * Math.cos(centerLat * Math.PI / 180); // Adjust for longitude distortion
+    const dy = lat - centerLat;
+
+    // Compute the value for lambda calculation
+    const value = (dx / Rx) ** 2 + (dy / Ry) ** 2;
+
+    // Compute lambda (scaling factor)
+    const lambda = Math.sqrt(value);
+
+    // Compute the distance from the center to the point
+    const D = Math.sqrt(dx ** 2 + dy ** 2);
+
+    // Handle the case when the point is at the center
+    if (lambda === 0) {
+        return D * 111; // Convert degrees to kilometers
+    }
+
+    // Compute the distance to the ellipse edge
+    const distanceDegrees = D * Math.abs(1 - 1 / lambda);
+
+    // Convert distance from degrees to kilometers
+    const distanceKm = distanceDegrees * 111; // Approximate conversion factor
+
+    return distanceKm; // Distance in kilometers
+}
+
+
   function makeFire(t, N0, k) {
     const points = [];
     const numPoints = N(t, N0, k);
 
     for (let p = 0; p < numPoints; p++) {
-      const intensity = Math.random() / 2;
+      const pt = caliFireCor(t);
+      if (corOnLand(pt)) {
+        const intensity = Math.random() / 2;
 
-      points.push({
-        "type": "Feature",
-        "geometry": {
-          "type": "Point",
-          "coordinates": caliFireCor(t)
-        },
-        "properties": {
-          "intensity": intensity
-        }
-      });
+        points.push({
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": pt
+          },
+          "properties": {
+            "intensity": intensity
+          }
+        });
+      }
     }
 
     return {
@@ -91,6 +137,24 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       "features": points
     };
   }
+
+  async function corOnLand(lon, lat) {
+    // need to fix this potentialy
+    try {
+        const response = await fetch(`https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${lon},${lat}.json?layers=water&access_token=${mapboxgl.accessToken}`);
+        const data = await response.json();
+        if (data.features.length > 0) {
+            console.log("The coordinate is on water");
+            return false;
+        } else {
+            console.log("The coordinate is on land");
+            return true;
+        }
+    }       
+    catch (error) {
+        return false;
+    }
+}
 
   useEffect(() => {
     const map = new mapboxgl.Map({
@@ -516,6 +580,10 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   
       if (mapRef.current && mapRef.current.getSource('fire-heatmap')) {
         mapRef.current.getSource('fire-heatmap').setData(heatmapData);
+      }
+
+      if (distanceToOvalEdge(t, userLocation[0], userLocation[1]) <= 50) {
+
       }
   
       if (t < 10) {
