@@ -296,7 +296,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       container: mapContainerRef.current,
       style: 'mapbox://styles/blairorchard/cm2gp48bg001z01pld8kf866m',
       center: [-122.5, 37.7],
-      zoom: 7,
+      zoom: 10,
       pitch: 60,
       bearing: -60,
       antialias: true,
@@ -484,6 +484,8 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
     const geocodingClient = mbxGeocoding({ accessToken: mapboxgl.accessToken });
     setGeocoder(geocodingClient);
+
+    let calledUser = false;
 
     // Add user location marker
     if ('geolocation' in navigator) {
@@ -704,7 +706,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       console.log(`Animation frame: ${t} seconds, ${heatmapData.features.length} points`);
 
       // Call handleToggleTopOverlay after 60 seconds (increased from 20 seconds)
-      if (t === 30) {
+      if (t >= 20 && t < 20.5) {
         handleToggleTopOverlay();
       }
 
