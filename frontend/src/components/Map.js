@@ -43,6 +43,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
   const [animationTime, setAnimationTime] = useState(0);
   const [cameraTarget, setCameraTarget] = useState([-122.5, 37.7]); // Default center
   const [cameraAngle, setCameraAngle] = useState(0);
+  const [escapeRoute, setEscapeRoute] = useState(null);
 
   // Add these new functions
   function N(t, N0, k) {
@@ -620,11 +621,62 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
     }
   }, [mapRef.current]);
 
+  useEffect(() => {
+    if (mapRef.current && isTopOverlayVisible && currentPosition && optimalDestination) {
+      showEscapeRoute();
+    }
+  }, [isTopOverlayVisible, currentPosition, optimalDestination]);
+
+  const showEscapeRoute = async () => {
+    if (!currentPosition || !optimalDestination) return;
+
+    const routeData = await showDirections(currentPosition, optimalDestination);
+    setEscapeRoute(routeData);
+
+    if (mapRef.current.getSource('escape-route')) {
+      mapRef.current.getSource('escape-route').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: routeData.geometry
+      });
+    } else {
+      mapRef.current.addSource('escape-route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: routeData.geometry
+        }
+      });
+
+      mapRef.current.addLayer({
+        id: 'escape-route',
+        type: 'line',
+        source: 'escape-route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#8A2BE2', // Purple color
+          'line-width': 6,
+          'line-opacity': 0.8
+        }
+      });
+    }
+  };
+
   const handleToggleTopOverlay = () => {
     setIsTopOverlayVisible(!isTopOverlayVisible);
     if (!isTopOverlayVisible && !isCallAccepted && !isCallDeclined) {
       audioRef.current.loop = true;
       audioRef.current.play();
+      showEscapeRoute(); // Show escape route when overlay appears
+    } else {
+      // Hide escape route when overlay is closed
+      if (mapRef.current.getLayer('escape-route')) {
+        mapRef.current.setLayoutProperty('escape-route', 'visibility', 'none');
+      }
     }
   };
 
@@ -691,7 +743,7 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       const t = Math.floor((currTime - startTime) / 1000);
       setAnimationTime(t);
   
-      const heatmapData = makeFire(t, N0, k, firePoints);
+      const heatmapData = makeFire(t / 2, N0, k, firePoints); // Divide t by 2 to slow down the fire growth
       setFirePoints(heatmapData.features);
   
       if (mapRef.current && mapRef.current.getSource('fire-heatmap')) {
@@ -706,11 +758,11 @@ const Map = ({ handleMouseEnter, handleMouseLeave, handleCallClick }) => {
       console.log(`Animation frame: ${t} seconds, ${heatmapData.features.length} points`);
 
       // Call handleToggleTopOverlay after 60 seconds (increased from 20 seconds)
-      if (t >= 20 && t < 20.5) {
+      if (t >= 20 && t < 20.5) { // Doubled the time to 40 seconds
         handleToggleTopOverlay();
       }
 
-      if (t < 1800) { // Run for 30 minutes (1800 seconds, increased from 600 seconds)
+      if (t < 3600) { // Run for 60 minutes (3600 seconds, doubled from 1800 seconds)
         setTimeout(() => {
           animationRef.current = requestAnimationFrame(animate);
         }, 1000); // Update every second

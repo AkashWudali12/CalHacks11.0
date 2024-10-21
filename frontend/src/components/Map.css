@@ -25,6 +25,7 @@ body {
   right: 0;
   bottom: 0;
   pointer-events: none;
+  z-index: 200;
 }
 
 .overlay-container {
@@ -114,4 +115,9 @@ body {
   100% {
     box-shadow: 0 0 0 0 rgba(0, 100, 255, 0);
   }
+}
+
+/* Style for the escape route */
+.mapboxgl-canvas-container .mapboxgl-layer[id^="escape-route"] {
+  z-index: 150; /* Ensure the route is above other layers but below the overlay */
 }
